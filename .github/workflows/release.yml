@@ -18,20 +18,24 @@ jobs:
         id: fetch_workflow
         with:
           script: |
-            const { data: runs } = await github.rest.actions.listWorkflowRuns({
+            const { data } = await github.rest.actions.listWorkflowRuns({
               owner: context.repo.owner,
               repo: context.repo.repo,
               workflow_id: 'build.yml', // Ensure this matches your Build workflow filename
               status: 'success',
               per_page: 1,
             });
+
+            // data.workflow_runs is the array of runs
+            const runs = data.workflow_runs || [];
             if (runs.length === 0) {
               core.setFailed('No successful Build workflow runs found.');
               return;
             }
+
             const latestRun = runs[0];
-            core.setOutput('run_id', latestRun.id);
-            core.setOutput('run_name', latestRun.name);
+            core.setOutput('run_id', String(latestRun.id));
+            core.setOutput('run_name', latestRun.name || latestRun.head_branch || String(latestRun.id));
 
       # Step 3: Download all artifacts from the latest Build workflow
       - name: Download Artifacts
