@@ -1,6 +1,6 @@
 name: Build
 
-on: [push, pull_request]
+on: [workflow_dispatch]
 
 # as recommended by: https://github.com/actions/checkout/issues/1590
 env:
@@ -25,7 +25,7 @@ jobs:
         shell: cmd
         run: |
           cd build
-          cmake -G "Visual Studio 17 2022" -DBUILD_SDLGPU=On -DCMAKE_BUILD_TYPE=MinSizeRel -DBUILD_WITH_ALL=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.5 ..
+          cmake -G "Visual Studio 17 2022" -DBUILD_SDLGPU=On -DCMAKE_BUILD_TYPE=MinSizeRel -DBUILD_PRO=On -DBUILD_WITH_ALL=ON ..
           cmake --build . --config MinSizeRel --parallel
 
       - name: Deploy
@@ -35,13 +35,6 @@ jobs:
           path: |
             build/bin/tic80.exe
             build/bin/*.dll
-
-      - name: Build Pro
-        shell: cmd
-        run: |
-          cd build
-          cmake -G "Visual Studio 17 2022" -DBUILD_SDLGPU=On -DCMAKE_BUILD_TYPE=MinSizeRel -DBUILD_PRO=On -DBUILD_WITH_ALL=ON ..
-          cmake --build . --config MinSizeRel --parallel
 
   # === Windows MinGW-64 ===
   windows-mingw:
@@ -74,7 +67,7 @@ jobs:
         shell: bash
         run: |
           cd build
-          cmake -G "MSYS Makefiles" -DBUILD_SDLGPU=On -DBUILD_STATIC=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_WITH_ALL=ON ..
+          cmake -G "MSYS Makefiles" -DBUILD_SDLGPU=On -DBUILD_STATIC=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_PRO=On -DBUILD_WITH_ALL=ON ..
           cmake --build . --parallel
 
   # === Ubuntu ===
