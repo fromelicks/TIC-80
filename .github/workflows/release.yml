@@ -1,0 +1,48 @@
+name: Create Release
+
+on:
+  workflow_dispatch: # Manual trigger
+    inputs:
+      tag_name:
+        description: 'Tag for the release (e.g., v1.0.0)'
+        required: true
+      release_title:
+        description: 'Title of the release'
+        required: true
+      release_notes:
+        description: 'Release notes or changelog'
+        required: false
+
+jobs:
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          # Adjust artifact names to match your workflow outputs
+          name: tic80-windows
+          path: ./artifacts/windows
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        with:
+          tag_name: ${{ github.event.inputs.tag_name }}
+          release_name: ${{ github.event.inputs.release_title }}
+          body: ${{ github.event.inputs.release_notes }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Artifacts to Release
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./artifacts/windows/tic80-windows.zip
+          asset_name: tic80-windows.zip
+          asset_content_type: application/zip
