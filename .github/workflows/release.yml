@@ -1,54 +1,69 @@
 name: Create Release
 
 on:
-  workflow_dispatch: # This allows manual triggering of the workflow
-    inputs:
-      tag_name:
-        description: 'Tag for the release (e.g., v1.0.0)'
-        required: true
-      release_title:
-        description: 'Title of the release'
-        required: true
-      release_notes:
-        description: 'Release notes or changelog'
-        required: false
+  workflow_dispatch:
 
 jobs:
-  create-release:
-    name: Create GitHub Release
+  fetch-and-release:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Download Windows Artifact
-        uses: actions/download-artifact@v4 # Updated version
-        with:
-          name: tic80-windows
-          path: ./artifacts/windows
-      - name: Create GitHub Release
-        id: create_release
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const { tag_name, release_title, release_notes } = github.event.inputs;
-            const release = await github.rest.repos.createRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              tag_name: tag_name,
-              name: release_title,
-              body: release_notes || '',
-              draft: false,
-              prerelease: false
-            });
-            return release.data.upload_url;
-          result-encoding: json
+    # Step 1: Checkout the repository
+    - name: Checkout Repository
+      uses: actions/checkout@v4
 
-      - name: Upload Windows Artifact to Release
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.result }}
-          asset_path: ./artifacts/windows/tic80-windows.zip
-          asset_name: tic80-windows.zip
-          asset_content_type: application/zip
-          asset_path: ./artifacts/html/tic80-html.zip
-          asset_name: tic80-html.zip
-          asset_content_type: application/zip
+    # Step 2: Get the latest successful Build workflow run
+    - name: Get Latest Build Workflow
+      uses: actions/github-script@v9
+      id: fetch_workflow
+      with:
+        script: |
+          const { data: runs } = await github.rest.actions.listWorkflowRuns({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            workflow_id: 'build.yml', // Ensure this matches your Build workflow filename
+            status: 'success',
+            per_page: 1,
+          });
+          if (runs.length === 0) {
+            core.setFailed('No successful Build workflow runs found.');
+            return;
+          }
+          const latestRun = runs[0];
+          core.setOutput('run_id', latestRun.id);
+          core.setOutput('run_name', latestRun.name);
+
+        # Output: run_id will be used to download artifacts
+        outputs:
+          run_id: ${{ steps.fetch_workflow.outputs.run_id }}
+          run_name: ${{ steps.fetch_workflow.outputs.run_name }}
+
+    # Step 3: Download all artifacts from the latest Build workflow
+    - name: Download Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        run-id: ${{ steps.fetch_workflow.outputs.run_id }}
+        path: ./artifacts
+
+    # Step 4: Create a new GitHub Release
+    - name: Create a Release
+      id: release
+      uses: actions/create-release@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        tag_name: v${{ github.run_number }}
+        release_name: Release Build #${{ steps.fetch_workflow.outputs.run_name }}
+        body: |
+          This release contains the build artifacts from workflow "${{ steps.fetch_workflow.outputs.run_name }}".
+        draft: false
+        prerelease: false
+
+    # Step 5: Attach each artifact to the release
+    - name: Upload Artifacts to Release
+      uses: actions/upload-release-asset@v2
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        release_id: ${{ steps.release.outputs.id }}
+        asset_path: ./artifacts
+        asset_name: ${{ github.event.release.name }}
+        asset_content_type: application/octet-stream
