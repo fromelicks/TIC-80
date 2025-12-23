@@ -8,62 +8,57 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # Step 1: Checkout the repository
-    - name: Checkout Repository
-      uses: actions/checkout@v4
+      # Step 1: Checkout the repository
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-    # Step 2: Get the latest successful Build workflow run
-    - name: Get Latest Build Workflow
-      uses: actions/github-script@v9
-      id: fetch_workflow
-      with:
-        script: |
-          const { data: runs } = await github.rest.actions.listWorkflowRuns({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            workflow_id: 'build.yml', // Ensure this matches your Build workflow filename
-            status: 'success',
-            per_page: 1,
-          });
-          if (runs.length === 0) {
-            core.setFailed('No successful Build workflow runs found.');
-            return;
-          }
-          const latestRun = runs[0];
-          core.setOutput('run_id', latestRun.id);
-          core.setOutput('run_name', latestRun.name);
+      # Step 2: Get the latest successful Build workflow run
+      - name: Get Latest Build Workflow
+        uses: actions/github-script@v9
+        id: fetch_workflow
+        with:
+          script: |
+            const { data: runs } = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'build.yml', // Ensure this matches your Build workflow filename
+              status: 'success',
+              per_page: 1,
+            });
+            if (runs.length === 0) {
+              core.setFailed('No successful Build workflow runs found.');
+              return;
+            }
+            const latestRun = runs[0];
+            core.setOutput('run_id', latestRun.id);
+            core.setOutput('run_name', latestRun.name);
 
-        # Output: run_id will be used to download artifacts
-        outputs:
-          run_id: ${{ steps.fetch_workflow.outputs.run_id }}
-          run_name: ${{ steps.fetch_workflow.outputs.run_name }}
+      # Step 3: Download all artifacts from the latest Build workflow
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ steps.fetch_workflow.outputs.run_id }}
+          path: ./artifacts
 
-    # Step 3: Download all artifacts from the latest Build workflow
-    - name: Download Artifacts
-      uses: actions/download-artifact@v4
-      with:
-        run-id: ${{ steps.fetch_workflow.outputs.run_id }}
-        path: ./artifacts
+      # Step 4: Create a new GitHub Release
+      - name: Create a Release
+        id: release
+        uses: actions/create-release@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: v${{ github.run_number }}
+          release_name: Release Build #${{ steps.fetch_workflow.outputs.run_name }}
+          body: |
+            This release contains the build artifacts from workflow "${{ steps.fetch_workflow.outputs.run_name }}".
+          draft: false
+          prerelease: false
 
-    # Step 4: Create a new GitHub Release
-    - name: Create a Release
-      id: release
-      uses: actions/create-release@v1
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        tag_name: v${{ github.run_number }}
-        release_name: Release Build #${{ steps.fetch_workflow.outputs.run_name }}
-        body: |
-          This release contains the build artifacts from workflow "${{ steps.fetch_workflow.outputs.run_name }}".
-        draft: false
-        prerelease: false
-
-    # Step 5: Attach each artifact to the release
-    - name: Upload Artifacts to Release
-      uses: actions/upload-release-asset@v2
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        release_id: ${{ steps.release.outputs.id }}
-        asset_path: ./artifacts
-        asset_name: ${{ github.event.release.name }}
-        asset_content_type: application/octet-stream
+      # Step 5: Attach each artifact to the release
+      - name: Upload Artifacts to Release
+        uses: actions/upload-release-asset@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          release_id: ${{ steps.release.outputs.id }}
+          asset_path: ./artifacts
+          asset_name: ${{ github.event.release.name }}
+          asset_content_type: application/octet-stream
