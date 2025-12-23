@@ -1,16 +1,68 @@
 name: Build
 
-on: [workflow_dispatch]
+on:
+  workflow_dispatch:
+    inputs:
+      run_windows:
+        description: 'Build Windows?'
+        type: boolean
+        default: false
+      run_windows_mingw:
+        description: 'Build Windows (MinGW)?'
+        type: boolean
+        default: false
+      run_linux_gcc12_glibc235:
+        description: 'Build Linux (GCC 12)?'
+        type: boolean
+        default: false
+      run_linux_arm64_gcc12_glibc235:
+        description: 'Build Linux ARM64 (GCC 12)?'
+        type: boolean
+        default: false
+      run_linux_gcc14_glibc239:
+        description: 'Build Linux (GCC 14)?'
+        type: boolean
+        default: false
+      run_rpi_baremetal:
+        description: 'Build Raspberry PI Bare Metal?'
+        type: boolean
+        default: false
+      run_rpi4_baremetal:
+        description: 'Build Raspberry PI 4 Bare Metal?'
+        type: boolean
+        default: false
+      run_nintendo_3ds:
+        description: 'Build Nintendo 3DS?'
+        type: boolean
+        default: false
+      run_nintendo_switch:
+        description: 'Build Nintendo Switch?'
+        type: boolean
+        default: false
+      run_macos_arm64:
+        description: 'Build macOS ARM64?'
+        type: boolean
+        default: false
+      run_macos:
+        description: 'Build macOS?'
+        type: boolean
+        default: false
+      run_android:
+        description: 'Build Android?'
+        type: boolean
+        default: false
+      run_html:
+        description: 'Build HTML?'
+        type: boolean
+        default: false
 
-# as recommended by: https://github.com/actions/checkout/issues/1590
-env:
+env:      
   ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
 
 jobs:
-  # === Windows ===
   windows:
+    if: ${{ inputs.run_windows }}
     runs-on: windows-2022
-
     steps:
       - uses: actions/checkout@v4
         with:
@@ -36,8 +88,8 @@ jobs:
             build/bin/tic80.exe
             build/bin/*.dll
 
-  # === Windows MinGW-64 ===
   windows-mingw:
+    if: ${{ inputs.run_windows_mingw }}
     runs-on: windows-latest
     defaults:
       run:
@@ -70,8 +122,8 @@ jobs:
           cmake -G "MSYS Makefiles" -DBUILD_SDLGPU=On -DBUILD_STATIC=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_PRO=On -DBUILD_WITH_ALL=ON ..
           cmake --build . --parallel
 
-  # === Ubuntu ===
   linux-gcc12-glibc235:
+    if: ${{ inputs.run_linux_gcc12_glibc235 }}
     runs-on: ubuntu-22.04
 
     steps:
@@ -90,7 +142,7 @@ jobs:
           sudo apt-get install gcc-12 g++-12 libglu1-mesa-dev libasound2-dev libpulse-dev libaudio-dev libsamplerate0-dev libcurl4-openssl-dev -y
           sudo ln -s -f /usr/bin/gcc-12 /usr/bin/gcc
           sudo ln -s -f /usr/bin/g++-12 /usr/bin/g++
-          
+
       - name: Build
         run: |
           cd build
@@ -111,8 +163,8 @@ jobs:
           cmake -DCMAKE_BUILD_TYPE=MinSizeRel -DBUILD_SDLGPU=On -DBUILD_PRO=On -DBUILD_WITH_ALL=ON ..
           cmake --build . --config MinSizeRel --parallel
 
-  # === Ubuntu-arm64 ===
   linux-arm64-gcc12-glibc235:
+    if: ${{ inputs.run_linux_arm64_gcc12_glibc235 }}
     runs-on: ubuntu-22.04-arm
 
     steps:
@@ -131,7 +183,7 @@ jobs:
           sudo apt-get install gcc-12 g++-12 libglu1-mesa-dev libasound2-dev libpulse-dev libaudio-dev libsamplerate0-dev libcurl4-openssl-dev -y
           sudo ln -s -f /usr/bin/gcc-12 /usr/bin/gcc
           sudo ln -s -f /usr/bin/g++-12 /usr/bin/g++
-          
+
       - name: Build
         run: |
           cd build
@@ -151,9 +203,8 @@ jobs:
           cd build
           cmake -DCMAKE_BUILD_TYPE=MinSizeRel -DBUILD_SDLGPU=On -DBUILD_PRO=On -DBUILD_WITH_ALL=ON ..
           cmake --build . --config MinSizeRel --parallel
-
-  # === Ubuntu gcc14 ===
   linux-gcc14-glibc239:
+    if: ${{ inputs.run_linux_gcc14_glibc239 }}
     runs-on: ubuntu-24.04
 
     steps:
@@ -173,7 +224,7 @@ jobs:
           sudo apt-get install gcc-14 g++-14 libxext-dev libglu1-mesa-dev libasound2-dev libpulse-dev libaudio-dev libsamplerate0-dev libcurl4-openssl-dev -y
           sudo ln -s -f /usr/bin/gcc-14 /usr/bin/gcc
           sudo ln -s -f /usr/bin/g++-14 /usr/bin/g++
-          
+
       - name: Build
         run: |
           cd build
@@ -194,8 +245,8 @@ jobs:
           cmake -DCMAKE_BUILD_TYPE=MinSizeRel -DBUILD_SDLGPU=On -DBUILD_PRO=On -DBUILD_WITH_ALL=ON ..
           cmake --build . --config MinSizeRel --parallel
 
-  # === Raspberry PI 1-4 Bare Metal ===
   rpi-baremetal:
+    if: ${{ inputs.run_rpi_baremetal }}
     runs-on: ubuntu-latest
     container: miguelhrvs/baremetalapi-tic80:latest
 
@@ -255,8 +306,8 @@ jobs:
             vendor/circle-stdlib/libs/circle/boot/fixup.dat
             vendor/circle-stdlib/libs/circle/boot/LICENCE.broadcom
 
-  # === Raspberry PI 4-5 Bare Metal ===
   rpi4-baremetal:
+    if: ${{ inputs.run_rpi4_baremetal }}
     runs-on: ubuntu-latest
     container: miguelhrvs/baremetalapi-tic80:latest
 
@@ -265,7 +316,6 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
-
       - name: Install Host toolchain
         run: |
           apt-get update
@@ -320,8 +370,8 @@ jobs:
             vendor/circle-stdlib/libs/circle/boot/LICENCE.broadcom
             vendor/circle-stdlib/libs/circle/boot/start4.elf
 
-  # === Nintendo 3DS build ===
   nintendo-3ds:
+    if: ${{ inputs.run_nintendo_3ds }}
     runs-on: ubuntu-latest
     container: devkitpro/devkitarm:20250728
 
@@ -349,8 +399,8 @@ jobs:
           name: "tic80-nintendo-3ds"
           path: build/bin/tic80.3dsx
 
-  # === Nintendo Switch build ===
   nintendo-switch:
+    if: ${{ inputs.run_nintendo_switch }}
     runs-on: ubuntu-latest
     container: devkitpro/devkita64:20250728
 
@@ -378,8 +428,8 @@ jobs:
           name: "tic80-nintendo-switch"
           path: build/bin/tic80.nro
 
-  # === MacOS 14 / arm64 ===
   macos-arm64:
+    if: ${{ inputs.run_macos_arm64 }}
     runs-on: macos-14
 
     steps:
@@ -411,8 +461,8 @@ jobs:
           cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SDLGPU=On -DBUILD_PRO=On -DBUILD_WITH_ALL=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.5 ..
           cmake --build . --parallel
 
-  # === MacOS 15 / x86_64 ===
   macos:
+    if: ${{ inputs.run_macos }}
     runs-on: macos-15-intel
 
     steps:
@@ -429,7 +479,6 @@ jobs:
           cd build
           cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_STATIC=ON -DBUILD_SDLGPU=On -DBUILD_WITH_ALL=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.5 ..
           cmake --build . --parallel
-
       - name: Deploy
         uses: actions/upload-artifact@v4
         with:
@@ -444,8 +493,8 @@ jobs:
           cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SDLGPU=On -DBUILD_PRO=On -DBUILD_WITH_ALL=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.5 ..
           cmake --build . --parallel
 
-  # === Android ===
   android:
+    if: ${{ inputs.run_android }}
     runs-on: ubuntu-latest
 
     steps:
@@ -484,8 +533,8 @@ jobs:
           name: "tic80-android"
           path: build/android/tic80.apk
 
-  # === HTML ===
   html:
+    if: ${{ inputs.run_html }}
     runs-on: ubuntu-latest
 
     steps:
